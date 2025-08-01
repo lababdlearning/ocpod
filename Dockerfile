@@ -1,20 +1,9 @@
-# Use a minimal base image
-FROM docker.io/library/alpine:latest
-
-# Create a non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Install tcpdump and Python (for HTTP server)
-RUN apk add --no-cache tcpdump python3 py3-pip
-
-# Set working directory
-WORKDIR /home/appuser
-
-# Expose HTTP port
+FROM  registry.redhat.io/ubi8/ubi
+RUN   yum install httpd python36 -y
+RUN  sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
+COPY  src/  /var/www/html/
+RUN chown apache:apache  /var/run/httpd  /var/log/httpd  
+RUN chmod  -R 777  /var/run/httpd  /var/log/httpd 
 EXPOSE 8080
-
-# Switch to non-root user
-USER appuser
-
-# Run HTTP server
-CMD ["python3", "-m", "http.server", "8080"]
+USER apache
+CMD ["/usr/sbin/httpd", "-D", "FOREGROUND"]
