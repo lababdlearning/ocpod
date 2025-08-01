@@ -1,5 +1,5 @@
 # Use a minimal base image
-FROM alpine:latest
+FROM docker.io/library/alpine:latest
 
 # Create a non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
