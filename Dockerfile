@@ -1,5 +1,5 @@
 # Use Red Hat Universal Base Image for Node.js
-FROM quay.io/ubi8/nodejs-18:latest
+FROM quay.io/dev_zone/ubi8/nodejs-18:latest
 
 # Set working directory
 WORKDIR /opt/app-root/src
