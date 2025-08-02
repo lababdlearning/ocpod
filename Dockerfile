@@ -1,32 +1,30 @@
-# Use Red Hat Universal Base Image for Node.js
-FROM quay.io/dev_zone/ubi8/nodejs-18:latest
+FROM debian:bullseye-slim
 
-# Set working directory
-WORKDIR /opt/app-root/src
+# Install apache2 and tcpdump
+RUN apt-get update && \
+    apt-get install -y apache2 tcpdump && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy package files first (for better caching)
-COPY package*.json ./
+# Create non-root user
+RUN useradd -m -s /bin/bash apacheuser
 
-# Install dependencies as root, then switch to user
-USER 0
-RUN npm install --only=production && npm cache clean --force
-USER 1001
+# Create required directories and set permissions
+RUN mkdir -p /home/apacheuser/apache-lock /var/run/apache2 && \
+    sed -i 's|^export APACHE_LOCK_DIR=.*|export APACHE_LOCK_DIR=/home/apacheuser/apache-lock|' /etc/apache2/envvars && \
+    sed -i 's|^export APACHE_RUN_USER=.*|export APACHE_RUN_USER=apacheuser|' /etc/apache2/envvars && \
+    sed -i 's|^export APACHE_RUN_GROUP=.*|export APACHE_RUN_GROUP=apacheuser|' /etc/apache2/envvars && \
+    chown -R apacheuser:apacheuser /var/www /var/log/apache2 /etc/apache2 /var/run/apache2 /home/apacheuser/apache-lock
 
-# Copy application source
-COPY app.js ./
+# Change Apache to listen on port 8080
+RUN sed -i 's/80/8080/g' /etc/apache2/ports.conf && \
+    sed -i 's/:80/:8080/g' /etc/apache2/sites-available/000-default.conf
 
-# Create a simple startup script
-RUN echo '#!/bin/bash' > start.sh && \
-    echo 'echo "Starting OpenShift Docker Build Demo..."' >> start.sh && \
-    echo 'exec npm start' >> start.sh && \
-    chmod +x start.sh
+# Switch to non-root user
+USER apacheuser
 
-# Expose port 8080
+# Expose port
 EXPOSE 8080
 
-# Health check (optional, for container health monitoring)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Start Apache in foreground
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
 
-# Use the startup script
-CMD ["./start.sh"]
